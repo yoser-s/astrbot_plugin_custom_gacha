@@ -1,0 +1,106 @@
+{
+    "trigger_words": {
+        "type": "list",
+        "description": "唤醒词列表",
+        "hint": "发送这些词语即可触发抽卡（带斜杠 /xxx 和不带斜杠均可）。例如填入「抽卡」「今日运势」等。",
+        "default": ["抽卡"]
+    },
+    "allow_direct_trigger": {
+        "type": "bool",
+        "description": "免斜杠直接触发",
+        "hint": "开启后，直接发送唤醒词即可触发；关闭后仅响应斜杠命令 /唤醒词。",
+        "default": true
+    },
+    "match_mode": {
+        "type": "string",
+        "description": "匹配模式",
+        "hint": "exact：整句完全一致才触发；starts_with：以唤醒词开头即可触发。",
+        "options": ["exact", "starts_with"],
+        "default": "exact"
+    },
+    "history_trigger_words": {
+        "type": "list",
+        "description": "图鉴直达唤醒词",
+        "hint": "发送这些词语（不带斜杠）会在当前会话直接发送你的抽卡图鉴图片。",
+        "default": ["图鉴", "我的图鉴", "抽卡图鉴"]
+    },
+    "daily_limit_count": {
+        "type": "int",
+        "description": "每日每人抽卡次数上限",
+        "hint": "每个用户每天最多抽卡次数，0 表示不限。",
+        "default": 1
+    },
+    "super_users": {
+        "type": "list",
+        "description": "抽卡调试超级管理员",
+        "hint": "私聊发送「自定义抽卡调试」可进入调试菜单（切换卡池/设置群卡池/测试抽卡）。留空则使用 AstrBot 配置的超级管理员。",
+        "default": []
+    },
+    "board_daily_word": {
+        "type": "string",
+        "description": "日榜触发词",
+        "hint": "在群内发送该词触发今日抽卡排行图。",
+        "default": "抽卡日榜"
+    },
+    "board_monthly_word": {
+        "type": "string",
+        "description": "月榜触发词",
+        "hint": "在群内发送该词触发本月抽卡排行图。",
+        "default": "抽卡月榜"
+    },
+    "board_total_word": {
+        "type": "string",
+        "description": "总榜触发词",
+        "hint": "在群内发送该词触发累计抽卡排行图。",
+        "default": "抽卡总榜"
+    },
+    "help_trigger_words": {
+        "type": "list",
+        "description": "帮助触发词",
+        "hint": "发送这些词语即可让机器人输出当前所有自定义指令的帮助菜单（动态生成）。",
+        "default": ["帮助", "菜单", "抽卡帮助"]
+    },
+    "debug_trigger_word": {
+        "type": "string",
+        "description": "调试会话触发词",
+        "hint": "超级管理员在私聊发送该词进入抽卡调试菜单（切换卡池/测试抽卡，结果不计入记录）。",
+        "default": "自定义抽卡调试"
+    },
+    "vision_model_provider": {
+        "type": "string",
+        "description": "AI 分析视觉模型",
+        "hint": "从官方模型列表中直接选择用于 AI 分析图片的对话模型（需支持图片输入）。留空则不自动分析，可在 WebUI 中手动触发。",
+        "default": "",
+        "_special": "select_provider"
+    },
+    "vision_model": {
+        "type": "string",
+        "description": "模型名称覆盖（可选）",
+        "hint": "一般留空，直接使用所选 Provider 的默认模型；仅在需要临时切换同一 Provider 下的其它模型时填写。",
+        "default": ""
+    },
+    "analysis_temperature": {
+        "type": "float",
+        "description": "AI 分析温度",
+        "hint": "视觉模型生成卡牌名称/文案时的温度，0-2。建议 0.6-1.0，太低会缺少梗味，太高容易跑题。",
+        "default": 0.8
+    },
+    "analysis_max_tokens": {
+        "type": "int",
+        "description": "AI 分析最大 Token",
+        "hint": "限制视觉模型分析返回的最大 token 数，建议 512 以上以容纳完整图鉴文案。",
+        "default": 512
+    },
+    "analysis_system_prompt": {
+        "type": "string",
+        "description": "AI 分析 System Prompt",
+        "hint": "指示视觉模型如何写图鉴词条。默认是「抽卡卡池宇宙图鉴总编」的抽卡文案风格，保留默认即可获得稳定的 JSON 输出。",
+        "default": "你是「自定义抽卡」卡池宇宙的图鉴总编，不是普通的图片描述器。请根据用户提供的图片画面和文件名，为这张卡牌写一条图鉴词条，参考轻松、机灵、略带反差的中文风格：name 必须是 3-8 个汉字，一语道破天机，风趣、有画面感，不能是泛泛的形容词；description 必须是 40-120 字的单段文案，带网络梗、风趣感和一点哲学意味，像图鉴旁白一样自然，可以在结尾反转。文件名往往藏着线索，可结合文件名做创意化改写，但不要照抄文件名。只返回 JSON，不要 Markdown，不要代码块，不要多余文字。格式：{\"name\":\"3-8字卡牌名\",\"description\":\"40-120字图鉴文案\"}"
+    },
+    "analysis_prompt_template": {
+        "type": "string",
+        "description": "AI 分析 Prompt 模板（可选）",
+        "hint": "覆盖每张图片的用户提问模板。可用 {filename}（原文件名）、{name}（去除扩展名的文件名）。留空使用内置模板。",
+        "default": ""
+    }
+}

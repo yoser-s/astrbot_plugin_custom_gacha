@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>自定义抽卡 · 管理面板</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #f5f6fa;
+      --panel: #ffffff;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #4f46e5;
+      --primary-soft: rgba(79,70,229,.08);
+      --danger: #ef4444;
+      --orange: #f59e0b;
+      --green: #22c55e;
+      --radius: 14px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11141f; --panel: #1a1f33; --border: #2a3147;
+        --text: #e5e7eb; --muted: #989db3; --primary: #6d68f0;
+        --primary-soft: rgba(109,104,240,.14);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      display: flex;
+    }
+    /* 左侧分类栏 */
+    .side {
+      width: 190px; flex-shrink: 0; background: var(--panel);
+      border-right: 1px solid var(--border); padding: 18px 12px; height: 100vh;
+      position: sticky; top: 0; overflow-y: auto;
+    }
+    .brand { font-size: 17px; font-weight: 700; margin-bottom: 4px; padding: 4px 10px; }
+    .brand small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: 10px; margin: 2px 0; cursor: pointer; color: var(--muted);
+      font-size: 14px; transition: background .15s, color .15s; user-select: none;
+    }
+    .nav-item:hover { background: var(--primary-soft); color: var(--text); }
+    .nav-item.active { background: var(--primary); color: #fff; font-weight: 600; }
+    .nav-item .icon { width: 18px; text-align: center; }
+    .main { flex: 1; padding: 26px 30px; overflow-y: auto; height: 100vh; }
+    .page { display: none; max-width: 1080px; margin: 0 auto; }
+    .page.active { display: block; }
+    h2 { font-size: 20px; margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 9px; cursor: pointer;
+      font-size: 13px; transition: opacity .15s, transform .05s; color: #fff;
+    }
+    .btn:hover { opacity: .86; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); }
+    .btn-danger { background: var(--danger); }
+    .btn-analyze { background: var(--orange); }
+    .btn-plain { background: var(--border); color: var(--text); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px; margin-bottom: 16px;
+    }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .stat .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .upload-row { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+    .upload-zone {
+      width: 210px; border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 26px 16px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+      background: var(--panel); color: var(--muted);
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: var(--primary-soft); }
+    .upload-zone .icon { font-size: 30px; margin-bottom: 8px; }
+    .upload-zone p { font-size: 13px; }
+    .upload-zone .hint { font-size: 11px; margin-top: 4px; opacity: .8; }
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar .stats { font-size: 13px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .gcard {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; transition: box-shadow .15s;
+    }
+    .gcard:hover { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+    .gcard img.preview { width: 100%; height: 170px; object-fit: cover; background: #0f0f1c; display: block; }
+    .gcard-body { padding: 12px; }
+    .gcard-body .name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+    .gcard-body .desc { font-size: 12px; color: var(--muted); line-height: 1.4; margin-bottom: 8px; min-height: 32px; }
+    .gcard-body .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 10px; }
+    .badge-gif { background: var(--orange); color: #fff; }
+    .badge-img { background: var(--primary); color: #fff; }
+    .badge-done { background: var(--green); color: #fff; }
+    .badge-pending { background: var(--border); color: var(--muted); }
+    .badge-grey { background: var(--border); color: var(--muted); }
+    .gcard-body .row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-row label { font-size: 13px; font-weight: 600; }
+    .form-row .hint { font-size: 11px; color: var(--muted); }
+    .form-row input[type=text], .form-row input[type=number], .form-row textarea, .form-row select {
+      padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
+      font-size: 13px; background: var(--bg); color: var(--text);
+    }
+    .form-row textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+    .form-row input:focus, .form-row textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+    .checks { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .toast {
+      position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+      padding: 12px 24px; border-radius: 10px; color: #fff; font-size: 13px;
+      z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 90%;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: var(--green); }
+    .toast.error { background: var(--danger); }
+    .toast.loading { background: var(--primary); }
+    .empty { text-align: center; padding: 46px; color: var(--muted); font-size: 15px; }
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+    }
+    .modal {
+      width: 420px; max-width: 100%; max-height: 90vh; overflow: auto;
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+    }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+    .modal .prev-img img { width: 100%; max-height: 220px; object-fit: contain; background: #0f0f1c; border-radius: 10px; margin-bottom: 12px; }
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .search-row input {
+      flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 9px;
+      font-size: 14px; background: var(--panel); color: var(--text);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    tr:hover td { background: var(--primary-soft); }
+    .progress { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--primary); z-index: 5; }
+    .split { display: flex; gap: 22px; flex-wrap: wrap; }
+    .split .col { flex: 1; min-width: 300px; }
+  </style>
+</head>
+<body>
+  <aside class="side" id="side">
+    <div class="brand">自定义抽卡
+      <small>Custom Gacha</small>
+    </div>
+    <div class="nav-item active" data-page="overview"><span class="icon">📊</span>总览</div>
+    <div class="nav-item" data-page="images"><span class="icon">🖼️</span>图片管理</div>
+    <div class="nav-item" data-page="analysis"><span class="icon">✨</span>AI 分析</div>
+    <div class="nav-item" data-page="history"><span class="icon">📜</span>抽卡历史</div>
+    <div class="nav-item" data-page="pools"><span class="icon">🗂️</span>群卡池</div>
+  </aside>
+
+  <main class="main" id="main">
+    <!-- 总览 -->
+    <section class="page active" id="page-overview">
+      <h2>总览</h2>
+      <p class="subtitle">自定义抽卡插件运行概况与快捷入口</p>
+      <div class="stat-grid" id="overviewStats"></div>
+      <div class="card">
+        <div class="card-title">快捷操作</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="go('images')">管理图片</button>
+          <button class="btn btn-analyze" onclick="go('analysis')">AI 分析</button>
+        <button class="btn btn-plain" onclick="go('history')">查看历史</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">抽卡最活跃的用户</div>
+        <div id="recentUsers"></div>
+      </div>
+    </section>
+
+    <!-- 图片管理 -->
+    <section class="page" id="page-images">
+      <h2>图片管理</h2>
+      <p class="subtitle">上传图片 / 压缩包，管理图片池</p>
+      <div class="upload-row">
+        <div class="upload-zone" id="imgZone">
+          <div class="icon">＋</div><p>上传图片</p><p class="hint">PNG/JPG/GIF/WebP/BMP，可多选</p>
+          <input type="file" id="imgInput" accept="image/*" multiple style="display:none" />
+        </div>
+        <div class="upload-zone" id="zipZone">
+          <div class="icon">🗜️</div><p>上传压缩包</p><p class="hint">仅 .zip，自动解包所有图片</p>
+          <input type="file" id="zipInput" accept=".zip" style="display:none" />
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-plain btn-sm" onclick="loadImages()">刷新</button>
+        <label>卡池文件夹
+          <select id="imgFolderFilter" onchange="loadImages()"></select>
+        </label>
+        <span class="stats" id="imgStats"></span>
+      </div>
+      <div class="toolbar" style="gap:8px;">
+        <button class="btn btn-primary btn-sm" id="imgMoveBtn" onclick="moveSelected()" disabled>移动到文件夹</button>
+        <select id="imgMoveTo"></select>
+        <span class="hint" style="color:var(--muted);font-size:12px;">勾选图片后可批量移动到所选文件夹</span>
+      </div>
+      <div id="imgGrid" class="grid"></div>
+      <div id="imgEmpty" class="empty" style="display:none">图片池为空，请上传图片或压缩包</div>
+    </section>
+
+    <!-- AI 分析 -->
+    <section class="page" id="page-analysis">
+      <h2>AI 分析</h2>
+      <p class="subtitle">对图片执行视觉模型分析，自动生成卡牌名称与介绍</p>
+      <div class="toolbar">
+        <button class="btn btn-analyze" id="analyzeAllBtn" onclick="analyzeAll()">分析全部未分析图片</button>
+        <button class="btn btn-plain btn-sm" onclick="loadAnalysis()">刷新</button>
+        <span class="stats" id="anaStats"></span>
+      </div>
+      <div id="anaProgress" style="display:none;background:var(--card,#fff);border:1px solid #eee;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#666;margin-bottom:6px;">
+          <span id="anaProgLabel">批量分析中…</span>
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span id="anaProgPct">0 / 0</span>
+            <button class="btn btn-danger btn-sm" id="anaProgStop" onclick="stopBatch()">停止</button>
+          </span>
+        </div>
+        <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden;">
+          <div id="anaProgBar" style="height:100%;width:0%;background:var(--primary,#4f7cff);transition:width .3s;border-radius:4px;"></div>
+        </div>
+      </div>
+      <div id="anaGrid" class="grid"></div>
+      <div id="anaEmpty" class="empty" style="display:none">暂无图片</div>
+    </section>
+
+    <!-- 历史 -->
+    <section class="page" id="page-history">
+      <h2>抽卡历史</h2>
+      <p class="subtitle">按 QQ 号搜索用户的抽卡记录与图鉴</p>
+      <div class="search-row">
+        <input type="text" id="qqInput" placeholder="输入 QQ 号搜索..." />
+        <button class="btn btn-primary" onclick="searchHistory()">搜索</button>
+        <button class="btn btn-plain" onclick="clearHistoryResult()">显示全部</button>
+      </div>
+      <div id="historyUsers"></div>
+      <div id="historyDetail" style="margin-top:18px;"></div>
+    </section>
+
+    <!-- 群卡池 -->
+    <section class="page" id="page-pools">
+      <h2>群卡池</h2>
+      <p class="subtitle">每个群分配独立的卡池文件夹；多个群可共用同一文件夹</p>
+      <div class="card">
+        <div class="card-title">文件夹</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="newFolder" placeholder="新建文件夹名称，如：猫猫图" style="flex:1;" />
+          <button class="btn btn-primary" onclick="addFolder()">新建文件夹</button>
+          <button class="btn btn-plain" onclick="loadPools()">刷新</button>
+        </div>
+        <div id="folderList"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">群 → 文件夹 绑定</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+          <input type="text" id="groupInput" placeholder="群号（可直接选下方已知群）" style="flex:1;" />
+          <select id="groupFolderSel"></select>
+          <button class="btn btn-primary" onclick="bindGroup()">绑定</button>
+        </div>
+        <div id="groupList"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 文案预览 -->
+  <div class="modal-mask" id="prevMask" style="display:none" onclick="if(event.target===this)closePrev()">
+    <div class="modal">
+      <div class="modal-head">
+        <span>文案预览</span>
+        <span style="cursor:pointer;opacity:.6" onclick="closePrev()">✕</span>
+      </div>
+      <div class="prev-img"><img id="prevImg" alt=""/></div>
+      <div class="form-row"><label>卡牌名称</label>
+        <input type="text" id="prevName" /></div>
+      <div class="form-row"><label>卡牌介绍（文案）</label>
+        <textarea id="prevDesc"></textarea></div>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="btn btn-analyze btn-sm" id="prevRegenBtn" onclick="regenCurrent()">重新生成</button>
+        <button class="btn btn-primary btn-sm" onclick="savePrev()">保存</button>
+        <button class="btn btn-plain btn-sm" onclick="closePrev()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    const bridge = window.AstrBotPluginPage || {};
+    if (typeof bridge.ready === 'function') {
+      try { await bridge.ready(); } catch (e) { console.warn('bridge.ready failed:', e); }
+    }
+    const toast = document.getElementById('toast');
+    function showToast(msg, type = 'success') {
+      toast.textContent = msg; toast.className = 'toast show ' + type;
+      setTimeout(() => { toast.className = 'toast ' + type; }, 3000);
+    }
+    function fmtSize(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    const pages = ['overview','images','analysis','history','pools'];
+    function go(p) {
+      pages.forEach(x => {
+        document.getElementById('page-' + x).classList.toggle('active', x === p);
+        document.querySelectorAll('.nav-item[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === p));
+      });
+      if (p === 'overview') loadOverview();
+      if (p === 'images') loadImages();
+      if (p === 'analysis') loadAnalysis();
+      if (p === 'history') loadHistoryUsers();
+      if (p === 'pools') loadPools();
+    }
+    document.querySelectorAll('.nav-item[data-page]').forEach(el =>
+      el.addEventListener('click', () => go(el.dataset.page)));
+    window.go = go;
+    // 沙箱 iframe 禁用了 confirm()，用两段式按钮确认代替
+    let __arm = Object.create(null);
+    function armConfirm(key, btn, yesFn, pendingText) {
+      if (__arm[key]) { __arm[key] = false; yesFn(); return; }
+      __arm[key] = true;
+      const orig = btn ? btn.textContent : '';
+      if (btn) btn.textContent = pendingText;
+      setTimeout(function () { if (__arm[key]) { __arm[key] = false; if (btn) btn.textContent = orig; } }, 3000);
+    }
+    window.loadOverview = loadOverview;
+    window.loadImages = loadImages;
+    let imgSel = new Set();
+    let __folders = [];
+    async function loadFolders() {
+      try {
+        const d = await bridge.apiGet('folders');
+        __folders = (d.folders || []).map(x => x.name);
+      } catch (e) { __folders = []; }
+      const curF = document.getElementById('imgFolderFilter').value;
+      const curM = document.getElementById('imgMoveTo').value;
+      const curG = document.getElementById('groupFolderSel').value;
+      const opts = ['全部'].concat(__folders).map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+      const o2 = __folders.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+      document.getElementById('imgFolderFilter').innerHTML = opts;
+      document.getElementById('imgMoveTo').innerHTML = o2;
+      document.getElementById('groupFolderSel').innerHTML = o2;
+      if (curF) document.getElementById('imgFolderFilter').value = __folders.includes(curF) || curF === '全部' ? curF : '全部';
+      if (curM) document.getElementById('imgMoveTo').value = __folders.includes(curM) ? curM : __folders[0];
+      if (curG) document.getElementById('groupFolderSel').value = __folders.includes(curG) ? curG : __folders[0];
+    }
+    async function loadImages() {
+      await loadFolders();
+      try {
+        const data = await bridge.apiGet('list');
+        const images = data.images || [];
+        const f = document.getElementById('imgFolderFilter').value;
+        const list = (f === '全部') ? images : images.filter(i => (i.folder || '饭饭表情包') === f);
+        document.getElementById('imgStats').textContent = '共 ' + list.length + ' / ' + images.length + ' 张';
+        const grid = document.getElementById('imgGrid');
+        const empty = document.getElementById('imgEmpty');
+        if (!images.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        grid.innerHTML = list.map(img => {
+          const name = esc(img.name || '未分析');
+          const desc = esc(img.description || '尚未进行 AI 分析');
+          const disp = esc((img.original_name || img.filename).replace(/'/g, "\\'"));
+          return '<div class="gcard" data-id="' + img.id + '">' +
+            '<label class="sel" title="勾选以移动"><input type="checkbox" data-iid="' + img.id + '" onchange="toggleSel(this)" ' + (imgSel.has(img.id) ? 'checked' : '') + '></label>' +
+            '<img class="preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" data-img="' + img.id + '"/>' +
+            '<div class="gcard-body"><div class="name">' + name + '</div><div class="desc">' + (img.name ? desc : '尚未进行 AI 分析') + '</div>' +
+            '<div class="meta"><span class="badge ' + (img.is_gif ? 'badge-gif' : 'badge-img') + '">' + (img.is_gif ? 'GIF' : 'IMG') + '</span>' +
+            (img.name ? '<span class="badge badge-done">已分析</span>' : '<span class="badge badge-pending">待分析</span>') +
+            '<span>' + fmtSize(img.size || 0) + '</span>' +
+            '<span class="badge badge-folder">' + esc((img.folder || '饭饭表情包')) + '</span></div>' +
+            '<div class="row"><button class="btn btn-analyze btn-sm" onclick="go(\'analysis\')">分析</button>' +
+            '<button class="btn btn-danger btn-sm" onclick="deleteImage(this,\'' + img.id + '\',\'' + disp + '\')">删除</button></div>' +
+            '</div></div>';
+        }).join('');
+        const cards = grid.querySelectorAll('.gcard[data-id]');
+        for (const c of cards) {
+          const id = c.getAttribute('data-id');
+          const im = c.querySelector('img.preview');
+          if (!im) continue;
+          const src = await loadImageSrc(id);
+          if (src) im.src = src; else im.style.opacity = 0.35;
+        }
+      } catch (e) { showToast('图片加载失败: ' + e.message, 'error'); }
+    }
+    window.toggleSel = function (cb) {
+      const id = cb.getAttribute('data-iid');
+      if (cb.checked) imgSel.add(id); else imgSel.delete(id);
+      document.getElementById('imgMoveBtn').disabled = imgSel.size === 0;
+    };
+    async function moveSelected() {
+      if (imgSel.size === 0) return;
+      const folder = document.getElementById('imgMoveTo').value;
+      if (!folder) { showToast('请选择目标文件夹', 'error'); return; }
+      try {
+        await bridge.apiPost('folders/move', { ids: [...imgSel], folder });
+        showToast('已移动 ' + imgSel.size + ' 张到「' + folder + '」');
+        imgSel.clear();
+        loadImages(); loadPools && loadPools();
+      } catch (e) { showToast('移动失败: ' + e.message, 'error'); }
+    }
+    window.moveSelected = moveSelected;
+
+    /* ---------- 群卡池 ---------- */
+    async function loadPools() {
+      try {
+        const d = await bridge.apiGet('folders');
+        (document.getElementById('folderList') || {}).innerHTML =
+          '<table><tr><th>文件夹</th><th>图片数</th></tr>' +
+          (d.folders || []).map(x => '<tr><td>' + esc(x.name) + '</td><td>' + x.images + '</td></tr>').join('') + '</table>';
+        const gf = d.group_folders || {};
+        const known = d.known_groups || {};
+        const allGids = Array.from(new Set(Object.keys(gf).concat(Object.keys(known))));
+        const rows = allGids.sort().map(gid => {
+          const b = gf[gid] || {};
+          return '<tr><td>' + esc(gid) + '</td><td>' + esc(b.folder || '未分配(默认)') + '</td><td>' + (b.images || 0) + '</td><td>' + (known[gid] || 0) + '</td>' +
+            '<td><button class="btn btn-plain btn-sm" onclick="fillGroup(\'' + esc(gid) + '\')">绑定/修改</button></td></tr>';
+        }).join('');
+        document.getElementById('groupList').innerHTML =
+          '<table><tr><th>群号</th><th>已分配文件夹</th><th>文件夹图数</th><th>群内抽卡次数</th><th></th></tr>' +
+          (rows || '<tr><td colspan="5"><div class="empty">还没有绑定记录；可输入群号 + 选择文件夹绑定，或在群内抽卡后在此分配</div></td></tr>') + '</table>';
+        await loadFolders();
+      } catch (e) { showToast('群卡池加载失败: ' + e.message, 'error'); }
+    }
+    window.fillGroup = function (gid) { document.getElementById('groupInput').value = gid; };
+    async function addFolder() {
+      const name = document.getElementById('newFolder').value.trim();
+      if (!name) { showToast('请输入文件夹名', 'error'); return; }
+      try { await bridge.apiPost('folders/add', { name }); document.getElementById('newFolder').value = ''; showToast('已新建'); loadPools(); }
+      catch (e) { showToast('新建失败: ' + e.message, 'error'); }
+    }
+    async function bindGroup() {
+      const group_id = document.getElementById('groupInput').value.trim();
+      const folder = document.getElementById('groupFolderSel').value;
+      if (!group_id) { showToast('请输入群号', 'error'); return; }
+      try { await bridge.apiPost('group_folder', { group_id, folder }); showToast('已绑定'); loadPools(); }
+      catch (e) { showToast('绑定失败: ' + e.message, 'error'); }
+    }
+    window.loadPools = loadPools;
+    window.addFolder = addFolder;
+    window.bindGroup = bindGroup;
+    window.loadAnalysis = loadAnalysis;
+    window.loadHistoryUsers = loadHistoryUsers;
+    window.searchHistory = searchHistory;
+    window.clearHistoryResult = clearHistoryResult;
+    window.analyzeAll = analyzeAll;
+
+    /* ---------- 总览 ---------- */
+    async function loadOverview() {
+      try {
+        const d = await bridge.apiGet('overview');
+        document.getElementById('overviewStats').innerHTML =
+          [['🖼️', d.total_images, '图片总数'], ['✨', d.analyzed_images, '已分析'], ['⏳', d.pending_images, '待分析'],
+           ['👥', d.total_users, '抽卡用户'], ['🎲', d.total_draws, '总抽卡次数']]
+          .map(([i, n, l]) => '<div class="stat"><div style="font-size:20px">' + i + ' ' + n + '</div><div class="lbl">' + l + '</div></div>').join('');
+        const us = (d.recent_users || []);
+        document.getElementById('recentUsers').innerHTML = us.length ? (
+          '<table><tr><th>QQ</th><th>抽卡次数</th><th>卡牌种类</th><th>最常抽中</th></tr>' +
+          us.map(u => '<tr><td>' + esc(u.user_id) + '</td><td>' + u.total + '</td><td>' + u.unique + '</td><td>' + esc(u.last_name) + '</td></tr>').join('') + '</table>'
+        ) : '<div class="empty">暂无抽卡记录</div>';
+      } catch (e) { showToast('总览加载失败: ' + e.message, 'error'); }
+    }
+
+    /* ---------- 图片 ---------- */
+    async function loadImageSrc(imgId) {
+      try {
+        const d = await bridge.apiGet('image/' + imgId);
+        const b64 = (d && (d.base64 || d.image)) || '';
+        const mime = (d && d.mime_type) || 'image/png';
+        if (!b64) return null;
+        if (b64.indexOf('data:') === 0) return b64;
+        return 'data:' + mime + ';base64,' + b64;
+      } catch (e) { return null; }
+    }
+    window.deleteImage = function (btn, id, name) {
+      armConfirm('delimg_' + id, btn, function () { doDeleteImage(id, name); }, '确认删除？');
+    };
+    async function doDeleteImage(id, name) {
+      try { await bridge.apiPost('delete', { id }); showToast('已删除'); loadImages(); loadAnalysis(); }
+      catch (e) { showToast('删除失败: ' + e.message, 'error'); }
+    }
+    async function uploadFile(file) {
+      try { await bridge.upload('upload', file); return true; }
+      catch (e) { showToast(file.name + ' 上传失败', 'error'); return false; }
+    }
+    async function uploadZip(file) {
+      showToast('正在解压: ' + file.name + ' ...', 'loading');
+      try { const r = await bridge.upload('upload_zip', file); showToast('导入 ' + r.imported + ' 张图片'); return true; }
+      catch (e) { showToast('压缩包失败: ' + e.message, 'error'); return false; }
+    }
+    async function handleFiles(files) {
+      let ok = 0;
+      for (const f of files) if (await uploadFile(f)) ok++;
+      if (ok) showToast(ok + ' 张图片上传成功');
+      loadImages(); loadAnalysis();
+    }
+    const iZone = document.getElementById('imgZone'), iInput = document.getElementById('imgInput');
+    iZone.addEventListener('click', () => iInput.click());
+    iInput.addEventListener('change', () => { if (iInput.files.length) handleFiles(iInput.files); iInput.value = ''; });
+    iZone.addEventListener('dragover', e => { e.preventDefault(); iZone.classList.add('dragover'); });
+    iZone.addEventListener('dragleave', () => iZone.classList.remove('dragover'));
+    iZone.addEventListener('drop', e => { e.preventDefault(); iZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+    const zZone = document.getElementById('zipZone'), zInput = document.getElementById('zipInput');
+    zZone.addEventListener('click', () => zInput.click());
+    zInput.addEventListener('change', () => { if (zInput.files.length) uploadZip(zInput.files[0]).then(() => { loadImages(); loadAnalysis(); }); zInput.value = ''; });
+    zZone.addEventListener('dragover', e => { e.preventDefault(); zZone.classList.add('dragover'); });
+    zZone.addEventListener('dragleave', () => zZone.classList.remove('dragover'));
+    zZone.addEventListener('drop', e => { e.preventDefault(); zZone.classList.remove('dragover'); if (e.dataTransfer.files.length) uploadZip(e.dataTransfer.files[0]).then(() => { loadImages(); loadAnalysis(); }); });
+
+    /* ---------- AI 分析 ---------- */
+    let prevId = null;
+    async function openPrev(id, name, desc) {
+      prevId = id;
+      document.getElementById('prevName').value = name || '';
+      document.getElementById('prevDesc').value = desc || '';
+      const img = document.getElementById('prevImg');
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      document.getElementById('prevMask').style.display = 'flex';
+      img.style.height = '180px'; img.style.objectFit = 'cover';
+      img.onload = () => { img.style.height = 'auto'; img.style.objectFit = 'contain'; };
+      const src = await loadImageSrc(id);
+      if (src) img.src = src; else img.style.opacity = 0.35;
+    }
+    function closePrev() { document.getElementById('prevMask').style.display = 'none'; prevId = null; }
+    async function savePrev() {
+      if (!prevId) return;
+      try {
+        await bridge.apiPost('update', { id: prevId, name: document.getElementById('prevName').value, description: document.getElementById('prevDesc').value });
+        showToast('已保存'); closePrev(); loadImages(); loadAnalysis();
+      } catch (e) { showToast('保存失败: ' + e.message, 'error'); }
+    }
+    async function regenCurrent() {
+      if (!prevId) return;
+      const btn = document.getElementById('prevRegenBtn'); btn.disabled = true;
+      showToast('正在重新生成...', 'loading');
+      try {
+        const r = await bridge.apiPost('analyze', { id: prevId });
+        document.getElementById('prevName').value = r.name; document.getElementById('prevDesc').value = r.description;
+        showToast('已生成: ' + r.name); loadImages(); loadAnalysis();
+      } catch (e) { showToast('生成失败: ' + e.message, 'error'); }
+      btn.disabled = false;
+    }
+    window.openPrev = openPrev; window.closePrev = closePrev; window.savePrev = savePrev; window.regenCurrent = regenCurrent;
+    async function analyzeImage(id, name) {
+      showToast('正在分析「' + name + '」...', 'loading');
+      try { const r = await bridge.apiPost('analyze', { id }); openPrev(id, r.name, r.description); loadImages(); loadAnalysis(); }
+      catch (e) { showToast('分析失败: ' + e.message, 'error'); }
+    }
+    window.analyzeImage = analyzeImage;
+    function storeGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+    function storeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function storeDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    let activeJob = storeGet('cgActiveJob');
+    let pollTimer = null;
+    function setProg(label, pct, done, total) {
+      const box = document.getElementById('anaProgress');
+      box.style.display = 'block';
+      document.getElementById('anaProgLabel').textContent = label;
+      document.getElementById('anaProgPct').textContent = done + ' / ' + total;
+      document.getElementById('anaProgBar').style.width = pct + '%';
+    }
+    async function pollBatchJob() {
+      if (!activeJob) return;
+      const job = encodeURIComponent(activeJob);
+      let st;
+      try { st = await bridge.apiGet('analyze_all/status/' + job); }
+      catch (e) {
+        storeDel('cgActiveJob'); activeJob = '';
+        showToast('批量分析已中断（可能已重启/过期），已完成的部分已保存', 'error');
+        hideProgress(); loadAnalysis(); loadImages();
+        return;
+      }
+      const total = st.total || 0;
+      const done = st.done || 0;
+      const p = total ? Math.round(done / total * 100) : 0;
+      setProg(st.finished ? (st.message || '完成') : ('正在分析' + (st.current ? '：' + st.current : '') + '…'),
+        st.finished ? 100 : p, done, total);
+      if (st.finished) {
+        storeDel('cgActiveJob'); activeJob = '';
+        showToast(st.message || '批量分析完成');
+        loadAnalysis(); loadImages();
+        setTimeout(hideProgress, 2500);
+      } else {
+        pollTimer = setTimeout(pollBatchJob, 1200);
+      }
+    }
+    function hideProgress() {
+      if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+      document.getElementById('anaProgress').style.display = 'none';
+    }
+    window.stopBatch = async function () {
+      if (!activeJob) return;
+      try { await bridge.apiPost('analyze_all/cancel/' + encodeURIComponent(activeJob)); }
+      catch (e) { /* ignore */ }
+      storeDel('cgActiveJob'); activeJob = '';
+      showToast('已请求停止');
+      setTimeout(hideProgress, 800);
+    };
+    async function analyzeAll() {
+      const btn = document.getElementById('analyzeAllBtn');
+      btn.disabled = true;
+      document.getElementById('anaProgStop').disabled = false;
+      setProg('正在启动批量分析…', 0, 0, 0);
+      try {
+        const r = await bridge.apiPost('analyze_all/start', {});
+        if (!r.job) { showToast('启动失败', 'error'); return; }
+        activeJob = r.job;
+        storeSet('cgActiveJob', r.job);
+        await pollBatchJob();
+      } catch (e) { showToast('批量分析失败: ' + e.message, 'error'); }
+      finally { btn.disabled = false; }
+    }
+    async function loadAnalysis() {
+      try {
+        const data = await bridge.apiGet('list');
+        const images = data.images || [];
+        const pending = images.filter(i => !i.name);
+        document.getElementById('anaStats').textContent = '共 ' + images.length + ' 张，其中待分析 ' + pending.length + ' 张';
+        const grid = document.getElementById('anaGrid');
+        const empty = document.getElementById('anaEmpty');
+        if (!images.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        grid.innerHTML = images.map(img => {
+          const done = !!img.name;
+          const name = esc(img.name || '未分析');
+          const desc = esc(img.description || '点击分析生成卡牌名称与介绍');
+          const disp = esc((img.original_name || img.filename).replace(/'/g, "\\'"));
+          return '<div class="gcard" data-aid="' + img.id + '">' +
+            '<img class="preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" data-aidimg="' + img.id + '"/>' +
+            '<div class="gcard-body"><div class="name">' + name + '</div><div class="desc">' + desc + '</div>' +
+            '<div class="meta">' + (done ? '<span class="badge badge-done">已分析</span>' : '<span class="badge badge-pending">待分析</span>') +
+            '<span class="badge badge-grey">' + (img.is_gif ? 'GIF' : 'IMG') + '</span>' + '</div>' +
+            '<div class="row"><button class="btn btn-analyze btn-sm" onclick="openPrev(\'' + img.id + '\',\'' + String(img.name||'').replace(/'/g,"\\'") + '\',\'' + String(img.description||'').replace(/'/g,"\\'") + '\')">预览</button>' +
+            '<button class="btn btn-plain btn-sm" onclick="analyzeImage(\'' + img.id + '\',\'' + disp + '\')">' + (done ? '重新生成' : '生成') + '</button></div>' +
+            '</div></div>';
+        }).join('');
+        const cards = grid.querySelectorAll('.gcard[data-aid]');
+        for (const c of cards) {
+          const id = c.getAttribute('data-aid');
+          const im = c.querySelector('img.preview');
+          if (!im) continue;
+          const src = await loadImageSrc(id);
+          if (src) im.src = src; else im.style.opacity = 0.35;
+        }
+      } catch (e) { showToast('分析列表加载失败: ' + e.message, 'error'); }
+    }
+
+    /* ---------- 历史 ---------- */
+    async function loadHistoryUsers() {
+      document.getElementById('historyUsers').innerHTML = '';
+      document.getElementById('historyDetail').innerHTML = '';
+      try {
+        const d = await bridge.apiGet('history/users');
+        renderGroups(d.groups || [], null);
+      } catch (e) { showToast('历史加载失败: ' + e.message, 'error'); }
+    }
+    function renderGroups(groups, query) {
+      const el = document.getElementById('historyUsers');
+      el.innerHTML = '';
+      if (query) el.innerHTML += '<div class="stats" style="margin-bottom:10px;">搜「' + esc(query) + '」的结果</div>';
+      if (!groups.length) { el.innerHTML += '<div class="empty">没有匹配的抽卡用户</div>'; return; }
+      groups.forEach(g => {
+        const label = g.group_id ? '群 ' + esc(g.group_id) : '私聊 / 未分组';
+        const rows = g.users.map(u =>
+          '<tr><td>' + esc(u.user_id) + '</td><td>' + u.total + '</td><td>' + u.unique + '</td><td>' + esc(u.last_name) + '</td>' +
+          '<td style="white-space:nowrap;"><button class="btn btn-primary btn-sm" onclick="viewHistory(\'' + esc(u.user_id) + '\')">查看图鉴</button> ' +
+          '<button class="btn btn-danger btn-sm" onclick="deleteHistory(\'' + esc(u.user_id) + '\',\'' + esc(g.group_id) + '\',this)">删除记录</button></td></tr>'
+        ).join('');
+        el.innerHTML += '<div class="card" style="padding:8px 4px;"><div class="card-title" style="font-size:14px;color:var(--primary);">📍 ' + label + ' <span style="color:var(--muted);font-weight:400;">(' + g.users.length + ' 人)</span></div>' +
+          '<table><tr><th>QQ</th><th>抽卡次数</th><th>卡牌种类</th><th>最常抽中</th><th></th></tr>' + rows + '</table></div>';
+      });
+    }
+    window.deleteHistory = function (uid, gid, btn) {
+      armConfirm('delhist_' + uid + '_' + gid, btn, function () { doDeleteHistory(uid, gid); }, '确认删除？');
+    };
+    async function doDeleteHistory(uid, gid) {
+      try {
+        await bridge.apiPost('history/delete', { user_id: uid, group_id: gid });
+        showToast('已删除 ' + uid + ' 的抽卡记录');
+        loadHistoryUsers();
+      } catch (e) { showToast('删除失败: ' + e.message, 'error'); }
+    }
+    window.viewHistory = viewHistory;
+    async function viewHistory(uid) {
+      const box = document.getElementById('historyDetail');
+      box.innerHTML = '<div class="empty">加载中...</div>';
+      try {
+        const d = await bridge.apiGet('history/' + encodeURIComponent(uid));
+        const cards = (d.cards || []).map(c =>
+          '<tr><td>' + esc(c.name) + '</td><td>×' + (c.count||0) + '</td><td>' + (c.has_image ? '✔' : '图片已删除') + '</td></tr>').join('');
+        box.innerHTML = '<div class="card"><div class="card-title">QQ ' + esc(uid) + ' · 累计 ' + (d.total||0) + ' 次抽卡 · ' + (d.unique||0) + ' 种卡牌</div>' +
+          '<div id="hAlbumImg" style="margin-bottom:14px;"></div>' +
+          '<table><tr><th>卡牌</th><th>次数</th><th>图片</th></tr>' + cards + '</table></div>' +
+          '<button class="btn btn-plain" onclick="clearHistoryDetail()">收起</button>';
+        try {
+          const card = await bridge.apiGet('history_card/' + encodeURIComponent(uid));
+          const b64 = (card && card.base64) || '';
+          const holder = document.getElementById('hAlbumImg');
+          if (!b64) { holder.innerHTML = '<div class="empty" style="padding:24px;">图鉴生成失败，请稍后重试</div>'; return; }
+          const mime = (card && card.mime_type) || 'image/png';
+          const im = document.createElement('img');
+          im.style.maxWidth = '100%'; im.style.borderRadius = '10px'; im.style.display = 'block';
+          im.onerror = function () { this.style.display = 'none'; };
+          im.src = b64.indexOf('data:') === 0 ? b64 : 'data:' + mime + ';base64,' + b64;
+          holder.appendChild(im);
+        } catch (e) {
+          const holder = document.getElementById('hAlbumImg');
+          if (holder) holder.innerHTML = '<div class="empty" style="padding:24px;">图鉴生成失败：' + esc(e.message) + '</div>';
+        }
+      } catch (e) {
+        box.innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+      }
+    }
+    window.clearHistoryDetail = clearHistoryDetail;
+    function clearHistoryDetail() { document.getElementById('historyDetail').innerHTML = ''; }
+    async function searchHistory() {
+      const qq = document.getElementById('qqInput').value.trim();
+      if (!qq) { showToast('请输入 QQ 号', 'error'); return; }
+      document.getElementById('historyDetail').innerHTML = '';
+      try {
+        const d = await bridge.apiGet('history/search/' + encodeURIComponent(qq));
+        renderGroups(d.groups || [], d.query);
+      } catch (e) { showToast('搜索失败: ' + e.message, 'error'); }
+    }
+    function clearHistoryResult() {
+      document.getElementById('qqInput').value = '';
+      document.getElementById('historyDetail').innerHTML = '';
+      loadHistoryUsers();
+    }
+
+    loadOverview();
+    if (activeJob) pollBatchJob();
+  </script>
+</body>
+</html>
