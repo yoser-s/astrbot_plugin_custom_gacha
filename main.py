@@ -44,7 +44,7 @@ IMG_MAX_W = CANVAS_W - 180
 
 # ==================== 存储工具 ====================
 
-DEFAULT_FOLDER = "饭饭表情包"
+DEFAULT_FOLDER = "Default"
 
 
 def _data_dir() -> Path:
@@ -1312,7 +1312,7 @@ class CustomGachaPlugin(Star):
             if t in ("2", "2️⃣", "设置群卡池", "分配群卡池"):
                 lst = " / ".join(_all_folder_names())
                 sess["step"] = "pick_group_folder"
-                await event.send(event.plain_result(f"输入「群号 文件夹名」设置该群卡池，例如：\n123456 饭饭表情包\n可用文件夹：{lst}\n（回复 0 返回菜单）"))
+                await event.send(event.plain_result(f"输入「群号 文件夹名」设置该群卡池，例如：\n123456 Default\n可用文件夹：{lst}\n（回复 0 返回菜单）"))
                 return
             if t in ("3", "3️⃣", "测试抽卡"):
                 await self._do_gacha(event, folder=_DEBUG_POOL.get(user_id), record=False)

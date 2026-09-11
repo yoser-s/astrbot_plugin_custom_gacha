@@ -379,7 +379,7 @@
             '<div class="meta"><span class="badge ' + (img.is_gif ? 'badge-gif' : 'badge-img') + '">' + (img.is_gif ? 'GIF' : 'IMG') + '</span>' +
             (img.name ? '<span class="badge badge-done">已分析</span>' : '<span class="badge badge-pending">待分析</span>') +
             '<span>' + fmtSize(img.size || 0) + '</span>' +
-            '<span class="badge badge-folder">' + esc((img.folder || '饭饭表情包')) + '</span></div>' +
+            '<span class="badge badge-folder">' + esc((img.folder || 'Default')) + '</span></div>' +
             '<div class="row"><button class="btn btn-analyze btn-sm" onclick="go(\'analysis\')">分析</button>' +
             '<button class="btn btn-danger btn-sm" onclick="deleteImage(this,\'' + img.id + '\',\'' + disp + '\')">删除</button></div>' +
             '</div></div>';
