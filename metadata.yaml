@@ -4,7 +4,13 @@ display_name: 自定义抽卡
 icon: icon.png
 version: v1.0.0
 author: custom
-repo: ""
+repo: https://github.com/yoser-s/astrbot_plugin_custom_gacha
+tags:
+  - 抽卡
+  - 娱乐
+  - 图鉴
+  - 多群隔离
+  - AI 分析
 support_platforms:
   - aiocqhttp
   - discord
