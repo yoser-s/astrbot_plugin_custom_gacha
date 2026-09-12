@@ -1,7 +1,6 @@
 name: astrbot_plugin_custom_gacha
 desc: "自定义抽卡插件：可自定触发词/帮助菜单/排行榜，文件夹式多卡池并支持每群独立分配；AI 视觉模型自动生成卡牌名称与图鉴文案；每日限抽、图鉴收集进度、日/月/总榜、超级管理员私聊调试会话；带多页面 WebUI 管理面板。"
 display_name: 自定义抽卡
-icon: icon.png
 version: v1.0.1
 author: custom
 repo: https://github.com/yoser-s/astrbot_plugin_custom_gacha

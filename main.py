@@ -533,7 +533,7 @@ def _record_draw(user_id: str, file_id: str, name: str, group_id: str = "") -> N
     if not isinstance(day_list, list):
         day_list = []
         day[today] = day_list
-    day_list.append({"file_id": file_id, "name": name or entry.get("name", "未知卡牌"), "ts": time.time()})
+    day_list.append({"file_id": file_id, "name": name or entry.get("name", "未知卡牌"), "ts": time.time(), "group_id": str(group_id or "")})
     groups = record.setdefault("groups", {})
     gg = groups.setdefault(str(group_id), {"draws": 0})
     gg["draws"] = int(gg.get("draws", 0)) + 1
@@ -546,20 +546,24 @@ def _get_user_history(user_id: str) -> dict:
     return history.get("users", {}).get(user_id, {"total": 0, "cards": {}})
 
 
-def _today_history_records(user_id: str) -> list[dict]:
+def _today_history_records(user_id: str, group_id: str | None = None) -> list[dict]:
     record = _load_history().get("users", {}).get(user_id, {})
     day_list = (record.get("day") or {}).get(time.strftime("%Y-%m-%d"))
     if not isinstance(day_list, list):
         return []
-    return [r for r in day_list if isinstance(r, dict) and r.get("file_id")]
+    result = [r for r in day_list if isinstance(r, dict) and r.get("file_id")]
+    if group_id is not None:
+        gid = str(group_id or "")
+        result = [r for r in result if str(r.get("group_id") or "") == gid]
+    return result
 
 
-def _check_daily_limit(user_id: str) -> bool:
-    """返回 True 表示今天已达抽卡上限。"""
+def _check_daily_limit(user_id: str, group_id: str | None = None) -> bool:
+    """返回 True 表示今天该群已达抽卡上限。"""
     limit = int(_load_settings().get("daily_limit_count", 1) or 0)
     if limit <= 0:
         return False
-    return len(_today_history_records(user_id)) >= limit
+    return len(_today_history_records(user_id, group_id)) >= limit
 
 
 # ==================== 文件夹 / 排行榜 / 调试会话 ====================
@@ -1062,9 +1066,9 @@ class CustomGachaPlugin(Star):
     async def _do_gacha(self, event: AstrMessageEvent, folder: str | None = None, record: bool = True):
         """执行抽卡逻辑。record=False 用于调试抽卡（不计数、不记记录、不设限）。"""
         group_id, user_id, name = self._event_ctx(event)
-        if record and _check_daily_limit(user_id):
-            await event.send(event.plain_result("你今天已经抽过卡啦，明天再来吧 👋"))
-            today_recs = _today_history_records(user_id)
+        if record and _check_daily_limit(user_id, group_id):
+            await event.send(event.plain_result("你今天在本群已经抽过卡啦，明天再来吧 👋"))
+            today_recs = _today_history_records(user_id, group_id)
             if today_recs:
                 try:
                     img_path = _render_today_image(user_id, today_recs)
@@ -1138,6 +1142,7 @@ class CustomGachaPlugin(Star):
     # ---------- 排行榜 ----------
 
     def _board_bucket(self, group_id: str, period: str) -> list[dict]:
+        """返回按单卡被抽次数降序排列的列表，每项 {file_id, count}。"""
         b = _load_boards()
         g = (b.get("groups") or {}).get(str(group_id)) or {}
         if period == "daily":
@@ -1146,15 +1151,15 @@ class CustomGachaPlugin(Star):
             node = (g.get("month") or {}).get(time.strftime("%Y-%m")) or {}
         else:
             node = g.get("total") or {}
-        rows = [dict({"user_id": k}, **v) for k, v in node.items() if isinstance(v, dict)]
+        card_totals: dict[str, int] = {}
+        for _uid, rec in node.items():
+            if not isinstance(rec, dict):
+                continue
+            for fid, cnt in (rec.get("cards") or {}).items():
+                card_totals[str(fid)] = card_totals.get(str(fid), 0) + int(cnt or 0)
+        rows = [{"file_id": fid, "count": cnt} for fid, cnt in card_totals.items()]
         rows.sort(key=lambda r: int(r.get("count", 0) or 0), reverse=True)
         return rows
-
-    def _top_card_of(self, rec: dict) -> str | None:
-        cards = rec.get("cards") or {}
-        if not cards:
-            return None
-        return max(cards, key=lambda k: int(cards[k] or 0))
 
     def _render_board_image(self, group_id: str, period: str) -> Path:
         period_names = {"daily": "日榜", "monthly": "月榜", "total": "总榜"}
@@ -1179,7 +1184,7 @@ class CustomGachaPlugin(Star):
         span = f"{time.strftime('%Y-%m-%d')}"
         if period == "monthly":
             span = time.strftime("%Y-%m")
-        draw.text((PAD, 88), f"统计范围:{span} · 本群共 {len(rows)} 人上榜", font=font_s, fill=(170, 170, 190))
+        draw.text((PAD, 88), f"统计范围:{span} · 本群共 {len(rows)} 种卡牌上榜", font=font_s, fill=(170, 170, 190))
 
         if not rows:
             draw.text((PAD, HEAD), "该时段群内还没有抽卡记录。", font=font_n, fill=(190, 190, 200))
@@ -1201,23 +1206,28 @@ class CustomGachaPlugin(Star):
             rb = rf.getbbox(str(rank))
             draw.text((cx - (rb[2] - rb[0]) // 2, cy - (rb[3] - rb[1]) // 2 - rb[1]), str(rank), font=rf, fill=(30, 28, 40))
 
-            name_str = str(rec.get("name") or f"QQ{rec['user_id']}")
-            draw.text((PAD + 86, y + 16), _ellips(name_str, font_n, 300), font=font_n, fill=(235, 235, 245))
-            cnt = int(rec.get("count", 0) or 0)
-            draw.text((PAD + 86, y + 50), f"抽到 {cnt} 次 · QQ{rec['user_id']}", font=font_s, fill=(170, 170, 190))
-
-            fid = self._top_card_of(rec)
-            tx = W - PAD - thumb
+            fid = str(rec.get("file_id") or "")
+            card_name = "未知卡牌"
+            img_path = None
             if fid and fid in mf:
-                img_path = _images_dir() / mf[fid]["filename"]
-                if img_path.exists():
-                    try:
-                        with Image.open(img_path) as src:
-                            th = _fit_thumb(src.convert("RGBA"), (thumb, thumb))
-                        canvas.paste(th, (tx, cy - thumb // 2), th)
-                        continue
-                    except Exception:
-                        pass
+                card_name = str(mf[fid].get("name") or mf[fid].get("filename") or "未知卡牌")
+                p = _images_dir() / mf[fid]["filename"]
+                if p.exists():
+                    img_path = p
+
+            draw.text((PAD + 86, y + 16), _ellips(card_name, font_n, 360), font=font_n, fill=(235, 235, 245))
+            cnt = int(rec.get("count", 0) or 0)
+            draw.text((PAD + 86, y + 50), f"被抽 {cnt} 次", font=font_s, fill=(170, 170, 190))
+
+            tx = W - PAD - thumb
+            if img_path:
+                try:
+                    with Image.open(img_path) as src:
+                        th = _fit_thumb(src.convert("RGBA"), (thumb, thumb))
+                    canvas.paste(th, (tx, cy - thumb // 2), th)
+                    continue
+                except Exception:
+                    pass
             draw.rounded_rectangle((tx, cy - thumb // 2, tx + thumb, cy + thumb // 2), radius=10, fill=(50, 46, 64))
 
         out = _cards_dir() / f"board_{group_id}_{period}.png"
