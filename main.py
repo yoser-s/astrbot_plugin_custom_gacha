@@ -1166,14 +1166,13 @@ class CustomGachaPlugin(Star):
         rows = self._board_bucket(group_id, period)[:20]
         title = f"抽卡榜单 · {period_names.get(period, period)}"
 
-        W = 900
+        W = 600
         HEAD = 120
         ROW_H = 88
-        PAD = 40
+        PAD = 30
         thumb = 60
         n = max(1, len(rows))
         H = HEAD + n * ROW_H + 30
-        # 空则仍给一点高度
         canvas = Image.new("RGB", (W, H), (26, 24, 34))
         draw = ImageDraw.Draw(canvas)
         font_t = _load_font(42, bold=True)
@@ -1215,7 +1214,7 @@ class CustomGachaPlugin(Star):
                 if p.exists():
                     img_path = p
 
-            draw.text((PAD + 86, y + 16), _ellips(card_name, font_n, 360), font=font_n, fill=(235, 235, 245))
+            draw.text((PAD + 86, y + 16), _ellips(card_name, font_n, 280), font=font_n, fill=(235, 235, 245))
             cnt = int(rec.get("count", 0) or 0)
             draw.text((PAD + 86, y + 50), f"被抽 {cnt} 次", font=font_s, fill=(170, 170, 190))
 
