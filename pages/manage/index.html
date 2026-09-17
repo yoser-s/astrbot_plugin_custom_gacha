@@ -146,6 +146,24 @@
     .progress { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--primary); z-index: 5; }
     .split { display: flex; gap: 22px; flex-wrap: wrap; }
     .split .col { flex: 1; min-width: 300px; }
+    /* 移动端（窄屏）适配：侧边栏转为顶部横向导航 */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .side {
+        display: flex; width: 100%; height: auto; flex-direction: row; align-items: center;
+        gap: 2px; overflow-x: auto; padding: 8px 10px; -webkit-overflow-scrolling: touch;
+        border-right: none; border-bottom: 1px solid var(--border);
+        position: sticky; top: 0; z-index: 20; flex-shrink: 0;
+      }
+      .brand { font-size: 15px; margin: 0 6px 0 0; flex-shrink: 0; padding: 4px 8px; }
+      .brand small { display: none; }
+      .nav-item { flex-shrink: 0; white-space: nowrap; padding: 8px 12px; font-size: 13px; }
+      .main { padding: 18px 14px; height: auto; overflow: visible; }
+      .page { max-width: none; }
+      table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+      .stat-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .toolbar, .upload-row, .search-row { gap: 8px; }
+    }
   </style>
 </head>
 <body>
